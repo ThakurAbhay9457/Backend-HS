@@ -62,10 +62,22 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const app = express();
 
 // CORS configuration
+const defaultAllowedOrigins = ['http://localhost:5173', 'http://localhost:3000']
+const envAllowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+  : []
+
+const allowedOrigins = [...defaultAllowedOrigins, ...envAllowedOrigins]
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl)
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(new Error('Not allowed by CORS'))
+  },
   credentials: true,
-}));
+}))
 
 // Middleware
 app.use(logger('dev')); // Optional: Add logging for debugging

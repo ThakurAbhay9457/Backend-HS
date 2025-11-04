@@ -28,9 +28,20 @@ const adminSignupSchema = z.object({
 });
 
 // Twilio config (replace with your credentials or use env)
-const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+let twilioClient = null;
 const OTPs = {};
 const RESET_OTPs = {};
+
+// Initialize Twilio only if credentials are provided
+if (process.env.TWILIO_SID && process.env.TWILIO_AUTH_TOKEN) {
+  try {
+    twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+  } catch (error) {
+    console.log('Twilio initialization failed:', error.message);
+  }
+} else {
+  console.log('Twilio credentials not provided, SMS features disabled');
+}
 
 // Email transporter (Mailtrap/Gmail/SMTP)
 const transporter = nodemailer.createTransport({
@@ -274,6 +285,11 @@ exports.phoneSignup = async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ message: 'Phone required' });
+    
+    if (!twilioClient) {
+      return res.status(503).json({ message: 'SMS service not available' });
+    }
+    
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     OTPs[phone] = otp;
     await twilioClient.messages.create({
